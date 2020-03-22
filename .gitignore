@@ -1,0 +1,6 @@
+*~
+*.o
+*.gdb
+someip.mk
+cli-hello
+srv-hello
