@@ -6,10 +6,10 @@ CFLAGS	+= -I$(ML)/include
 CFLAGS	+= -g
 #CFLAGS	+= -O
 
-CL	= cli-hello
-CL_OUT	= $(CL)
+CL	= hello-cli
+CL_OUT	= hello/$(CL)
 CL_OBJS	= \
-	client.o \
+	hello/cli.o \
 	$(ML)/file/select/read.o \
 	$(ML)/net/addr.o \
 	$(ML)/net/addr/hostent.o \
@@ -25,9 +25,10 @@ CL_OBJS	= \
 
 OUTS +=	$(CL_OUT)
 
-SR	= srv-hello
-SR_OUT	= $(SR)
+SR	= hello-srv
+SR_OUT	= hello/$(SR)
 SR_OBJS	= \
+	hello/srv.o \
 	$(ML)/file/select/read.o \
 	$(ML)/file/select/write.o \
 	$(ML)/net/inet/bind/any.o \
@@ -38,7 +39,6 @@ SR_OBJS	= \
 	print/recv.o \
 	recv.o \
 	send.o \
-	server.o \
 	type/text.o \
 
 OUTS +=	$(SR_OUT)

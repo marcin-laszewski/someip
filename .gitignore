@@ -2,5 +2,5 @@
 *.o
 *.gdb
 someip.mk
-cli-hello
-srv-hello
+hello/hello-cli
+hello/hello-srv
