@@ -64,11 +64,11 @@ $(DEBUGS):
 
 $(OUTS):
 	@echo '[LD]	' $@
-	@$(CC) $(LDFLAGS) -o $@ $^
+	@$(CC) $(LDFLAGS) -o $@ $^ -lm
 
 %.o: %.c
 	@echo '[CC]	' $@
-	@$(CC) $(CFLAGS) -o $@ -c $< $(LIBS)
+	@$(CC) $(CFLAGS) -o $@ -c $<
 
 #--- client ------------------
 debug-$(CL_OUT): $(CL_OUT)
@@ -82,7 +82,8 @@ run-$(CL_OUT): $(CL_OUT)
 		--session $(si_session) \
 		--print-recv \
 		--print-hdr \
-		--print-data
+		--print-data \
+		--stdin
 
 $(CL_OUT): $(CL_OBJS)
 

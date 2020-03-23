@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,6 +7,8 @@
 #include "net.h"
 #include <someip/net.h>
 #include <someip/utils.h>
+
+#include "config.h"
 
 #define	BUFLEN	4096
 
@@ -20,6 +23,20 @@ usage_exit(char const * progname)
 	fputs(progname, stderr);
 	fputs(" {--udp port}\n", stderr);
 	exit(1);
+}
+
+void set_error(struct someip * o, char const * msg)
+{
+	someip_set_type(o, someip_type_RESPONSE);
+	someip_set_code(o, 1);
+	someip_set_data(o, msg, strlen(msg));
+}
+
+void set_result(struct someip * o, double result)
+{
+	someip_set_code(o, someip_code_OK);
+	someip_set_type(o, someip_type_RESPONSE);
+	someip_set_data(o, &result, sizeof result);
 }
 
 int
@@ -137,29 +154,48 @@ main(int argc, char *argv[])
 
 		if(i > someip_len_HDR1 + someip_len_HDR2)
 		{
+			double * d = (double *)&(o->data);
+
 			someip_print_msg((struct someip *)buf, arg_mask);
 
-			if(arg_mask & arg_SERVICE)
-				o->service	= someip_u2(service);
-			if(arg_mask & arg_METHOD)
-				o->method		= someip_u2(method);
-			o->len	= someip_u4(len);
-			if(arg_mask & arg_METHOD)
-				o->client	= someip_u2(client);
-			if(arg_mask & arg_METHOD)
-				o->session	= someip_u2(session);
-			if(arg_mask & arg_PROTO)
-				o->proto	= proto;
-			if(arg_mask & arg_IFACE)
-				o->iface	= iface;
-			if(arg_mask & arg_TYPE)
-				o->type	= type;
-			else
-				o->type	= someip_type_RESPONSE;
-			if(arg_mask & arg_CODE)
-				o->code	= code;
+			switch(someip_u2(o->method))
+			{
+				case	method_POW2:	set_result(o, pow(*d, 2));	break;
+				case	method_SIN:	set_result(o, sin(*d));	break;
+				case	method_COS:	set_result(o, cos(*d));	break;
+				case	method_ABS:	set_result(o, fabs(*d));	break;
+				case	method_SUM:	set_result(o, d[0] + d[1]);	break;
+				case	method_SUB:	set_result(o, d[0] - d[1]);	break;
+				case	method_MUL:	set_result(o, d[0] * d[1]);	break;
+				case	method_DIV:
+					if(d[1])
+						set_result(o, d[0] / d[1]);
+					else
+						set_error(o, "Div by zero.");
+					break;
 
-			memcpy(o->data, SR_DATA, SR_DATA_LEN);
+				default:
+					if(arg_mask & arg_SERVICE)
+						o->service	= someip_u2(service);
+					if(arg_mask & arg_METHOD)
+						o->method		= someip_u2(method);
+					o->len	= someip_u4(len);
+					if(arg_mask & arg_METHOD)
+						o->client	= someip_u2(client);
+					if(arg_mask & arg_METHOD)
+						o->session	= someip_u2(session);
+					if(arg_mask & arg_PROTO)
+						o->proto	= proto;
+					if(arg_mask & arg_IFACE)
+						o->iface	= iface;
+					if(arg_mask & arg_TYPE)
+						o->type	= type;
+					else
+						o->type	= someip_type_RESPONSE;
+					if(arg_mask & arg_CODE)
+						o->code	= code;
+					memcpy(o->data, SR_DATA, SR_DATA_LEN);
+			}
 
 			someip_print_msg(o, arg_mask);
 

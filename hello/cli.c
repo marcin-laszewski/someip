@@ -8,7 +8,10 @@
 #include <someip/net.h>
 #include <someip/utils.h>
 
+#include "config.h"
+
 #define	BUFLEN	4096
+#define	STDIN_BUFLEN	256
 
 #define	CL_DATA	"World"
 #define	CL_DATA_LEN	(sizeof(CL_DATA) - 1)
@@ -37,6 +40,21 @@ void usage_exit(char const * progname)
 		stderr);
 	exit(1);
 }
+
+int set_data_n(struct someip * o, unsigned short method, unsigned n, int i, double * tab)
+{
+	if(--i != n)
+	{
+		fprintf(stderr, "Incorrect nunmber of expected arguments [%u]: %d\n", n, i);
+		return -1;
+	}
+
+	someip_set_method(o, method);
+	someip_set_data(o, tab, n * sizeof(*tab));
+
+	return 0;
+}
+
 
 #define	arg_MANDATORY	(arg_UDP | arg_SERVICE | arg_METHOD | arg_CLIENT | arg_SESSION)
 
@@ -73,6 +91,8 @@ main(int argc, char *argv[])
 				client = strtold(argv[i], NULL);
 				arg_mask |= arg_CLIENT;
 			}
+			else if(!strcmp(argv[i], "--stdin"))
+				arg_mask |= arg_STDIN;
 			else if(!strcmp(argv[i], "--loop"))
 			{
 				i++;
@@ -157,10 +177,89 @@ main(int argc, char *argv[])
 
 	for(;;)
 	{
-		someip_set_request_ok(o);
-		someip_set_msg(o, method, service);
-		someip_set_req(o, client, session);
-		someip_set_data(o, CL_DATA, CL_DATA_LEN);
+		char buf[STDIN_BUFLEN];
+
+		if(arg_mask & arg_STDIN)
+		{
+			if(isatty(fileno(stdin)) > 0)
+			{
+				fputs("cmd> ", stdout);
+				fflush(stdout);
+			}
+
+			if(fgets(buf, sizeof(buf), stdin) == NULL)
+				break;
+
+			{
+				char cmd[STDIN_BUFLEN];
+				double arg[2];
+				int i;
+
+				i = sscanf(buf, "%s %lf%lf", cmd, arg, arg + 1);
+				if(i > 0)
+				{
+					if(!strcmp(cmd, "pow2"))
+					{
+						if(set_data_n(o, method_POW2, 1, i, arg))
+							continue;
+					}
+					else if(!strcmp(cmd, "sin"))
+					{
+						if(set_data_n(o, method_SIN, 1, i, arg))
+							continue;
+					}
+					else if(!strcmp(cmd, "cos"))
+					{
+						if(set_data_n(o, method_COS, 1, i, arg))
+							continue;
+					}
+					else if(!strcmp(cmd, "abs"))
+					{
+						if(set_data_n(o, method_ABS, 1, i, arg))
+							continue;
+					}
+					else if(!strcmp(cmd, "sum"))
+					{
+						if(set_data_n(o, method_SUM, 2, i, arg))
+							continue;
+					}
+					else if(!strcmp(cmd, "sub"))
+					{
+						if(set_data_n(o, method_SUB, 2, i, arg))
+							continue;
+					}
+					else if(!strcmp(cmd, "mul"))
+					{
+						if(set_data_n(o, method_MUL, 2, i, arg))
+							continue;
+					}
+					else if(!strcmp(cmd, "div"))
+					{
+						if(set_data_n(o, method_DIV, 2, i, arg))
+							continue;
+					}
+					else
+					{
+						fprintf(stderr, "Unknown command: %s\n", cmd);
+						continue;
+					}
+
+					someip_set_request_ok(o);
+					someip_set_service(o, service);
+					someip_set_req(o, client, session);
+				}
+				else
+					continue;
+			}
+		}
+		else
+		{
+			someip_set_request_ok(o);
+			someip_set_msg(o, method, service);
+			someip_set_req(o, client, session);
+			someip_set_data(o, CL_DATA, CL_DATA_LEN);
+		}
+
 		someip_print_msg(o, arg_mask);
 
 		i = someip_send(s, o, (struct sockaddr *)&addr, sizeof(addr));
@@ -180,12 +279,33 @@ main(int argc, char *argv[])
 		someip_print_recv(i, arg_mask);
 		someip_print_msg((struct someip *)buf, arg_mask);
 
+		{
+			struct someip * o = (struct someip *)buf;
+			unsigned short m = someip_u2(o->method);
+
+			if(method_is_CALC(m))
+			{
+				printf("[%04X.%04X] ", someip_u2(o->service), m);
+				if(o->code == someip_code_OK)
+					printf("Result: %.3g", *(double *)o->data);
+				else
+				{
+					fflush(stdout);
+					fputs("Error: ", stderr);
+					fwrite(o->data, someip_u4(o->len), 1, stdout);
+				}
+			}
+
+			putchar('\n');
+		}
+
 		if(loop)
 		{
-			if(loop == UINT_MAX)
-				break;
-
-			usleep(1000 * (useconds_t)loop);
+			if(loop != UINT_MAX)
+				usleep(1000 * (useconds_t)loop);
+			else
+				if(!(arg_mask & arg_STDIN))
+					break;
 		}
 	}
 }
