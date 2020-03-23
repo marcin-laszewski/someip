@@ -62,18 +62,11 @@ struct cmd
 	unsigned	argc;
 };
 
-static struct cmd *
-cmd_find(struct cmd * cmds, unsigned n, char const * name)
+static	int cmd_cmp(char const * name, struct cmd * cmd)
 {
-	unsigned i;
-
-	/* lsearch, bsearch will be better */
-	for(i = 0; i < n; i++)
-		if(!strcmp(name, cmds[i].name))
-			return cmds + i;
-
-	return NULL;
+	return strcmp(name, cmd->name);
 }
+
 
 #define	arg_MANDATORY	(arg_UDP | arg_SERVICE | arg_METHOD | arg_CLIENT | arg_SESSION)
 
@@ -233,7 +226,8 @@ main(int argc, char *argv[])
 				{
 					struct cmd * c;
 
-					c = cmd_find(cmds, cmds_n, cmd);
+					c = (struct cmd *)bsearch(cmd, cmds, cmds_n, sizeof(*cmds), (__compar_fn_t)cmd_cmp);
+
 					if(c == NULL)
 					{
 						fprintf(stderr, "Unknown command: %s\n", cmd);
