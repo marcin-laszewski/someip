@@ -55,8 +55,41 @@ int set_data_n(struct someip * o, unsigned short method, unsigned n, int i, doub
 	return 0;
 }
 
+struct cmd
+{
+	char const *	name;
+	unsigned short	method;
+	unsigned	argc;
+};
+
+static struct cmd *
+cmd_find(struct cmd * cmds, unsigned n, char const * name)
+{
+	unsigned i;
+
+	/* lsearch, bsearch will be better */
+	for(i = 0; i < n; i++)
+		if(!strcmp(name, cmds[i].name))
+			return cmds + i;
+
+	return NULL;
+}
 
 #define	arg_MANDATORY	(arg_UDP | arg_SERVICE | arg_METHOD | arg_CLIENT | arg_SESSION)
+
+static struct cmd cmds[] =
+{
+	{ "abs",	method_ABS, 1 },
+	{ "cos",	method_COS, 1 },
+	{ "div",	method_DIV, 2 },
+	{ "mul",	method_MUL, 2 },
+	{ "pow2",	method_POW2, 1 },
+	{ "sin",	method_SIN, 1 },
+	{ "sub",	method_SUB, 2 },
+	{ "sum",	method_SUM, 2 },
+};
+
+#define	cmds_n	(sizeof(cmds) / sizeof(*cmds))
 
 int
 main(int argc, char *argv[])
@@ -198,58 +231,33 @@ main(int argc, char *argv[])
 				i = sscanf(buf, "%s %lf%lf", cmd, arg, arg + 1);
 				if(i > 0)
 				{
-					if(!strcmp(cmd, "pow2"))
-					{
-						if(set_data_n(o, method_POW2, 1, i, arg))
-							continue;
-					}
-					else if(!strcmp(cmd, "sin"))
-					{
-						if(set_data_n(o, method_SIN, 1, i, arg))
-							continue;
-					}
-					else if(!strcmp(cmd, "cos"))
-					{
-						if(set_data_n(o, method_COS, 1, i, arg))
-							continue;
-					}
-					else if(!strcmp(cmd, "abs"))
-					{
-						if(set_data_n(o, method_ABS, 1, i, arg))
-							continue;
-					}
-					else if(!strcmp(cmd, "sum"))
-					{
-						if(set_data_n(o, method_SUM, 2, i, arg))
-							continue;
-					}
-					else if(!strcmp(cmd, "sub"))
-					{
-						if(set_data_n(o, method_SUB, 2, i, arg))
-							continue;
-					}
-					else if(!strcmp(cmd, "mul"))
-					{
-						if(set_data_n(o, method_MUL, 2, i, arg))
-							continue;
-					}
-					else if(!strcmp(cmd, "div"))
-					{
-						if(set_data_n(o, method_DIV, 2, i, arg))
-							continue;
-					}
-					else
+					struct cmd * c;
+
+					c = cmd_find(cmds, cmds_n, cmd);
+					if(c == NULL)
 					{
 						fprintf(stderr, "Unknown command: %s\n", cmd);
 						continue;
 					}
+					else
+						if(set_data_n(o, c->method, c->argc, i, arg))
+							continue;
 
 					someip_set_request_ok(o);
 					someip_set_service(o, service);
 					someip_set_req(o, client, session);
 				}
 				else
+				{
+					fputs("List of command:\n", stderr);
+					for(i = 0; i < cmds_n; i++)
+					{
+						fputc('\t', stderr);
+						fputs(cmds[i].name, stderr);
+						fputc('\n', stderr);
+					}
 					continue;
+				}
 			}
 		}
 		else
