@@ -5,7 +5,7 @@
 void someip_print_hdr(struct someip *d)
 {
 	printf("service:\t0x%04X\n"
-	       "message:\t0x%04X\n"
+	       "method:\t0x%04X\n"
 	       "length:\t%u\n"
 	       "client:\t0x%04X\n"
 	       "session:\t0x%04X\n"
