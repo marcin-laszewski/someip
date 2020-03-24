@@ -1,0 +1,175 @@
+someip
+======
+Marcin Laszewski Marcin.Laszewski@aptiv.com
+
+Kompilacja
+----------
+....................................
+$ make all
+[CC]     hello/cli.o
+[CC]     ../libml/file/select/read.o
+[CC]     ../libml/net/addr.o
+[CC]     ../libml/net/addr/hostent.o
+[CC]     ../libml/net/addr/name.o
+[CC]     ../libml/net/udp/socket.o
+[CC]     print/data.o
+[CC]     print/hdr.o
+[CC]     print/msg.o
+[CC]     print/recv.o
+[CC]     recv.o
+[CC]     send.o
+[CC]     type/text.o
+[LD]     hello/hello-cli
+[CC]     hello/srv.o
+[CC]     ../libml/file/select/write.o
+[CC]     ../libml/net/inet/bind/any.o
+[LD]     hello/hello-srv
+.....................................
+
+
+Uruchomienie
+------------
+
+Serwer
+~~~~~~
+..........................
+$ make run-hello/hello-srv
+./hello/hello-srv --udp 30509
+..........................
+
+Klient
+~~~~~~
+...............................
+$ make run-hello/hello-cli
+./hello/hello-cli \
+        --udp 127.0.0.1 30509 \
+        --service 0x1111 \
+        --method 0x3333 \
+        --client 0x5555 \
+        --session 1 \
+        --print-recv \
+        --print-hdr \
+        --print-data \
+        --stdin
+cmd>
+...............................
+
+Obsługa klienta
+---------------
+
+Klient czeka na polecenia do wykonania:
+
+*ENTER* _(pusta linia)_::	Wykaz poleceń.
+*CTRL+D* (koniec danych)::	Zakończenie działania klienta.
+abs x::		Wartość bezwzględna _|x|_.
+cos x::		Funkcja trygonometryczna: _sin(x)_
+div x y::	Dzielenie: _x / _y_
+mul x y::	Mnożenie: _x * y_
+pow2 x::	Potęga drugiego stopnia: _x^2_
+sin x::		Funkcja trygonometryczna: _cos(x)_
+sub x y::	Odejmowanie: _x - y_
+sum x y::	Dodawania: _x + y_
+
+Przykłady
+~~~~~~~~~
+..............................
+$ make run-hello/hello-cli
+./hello/hello-cli \
+        --udp 127.0.0.1 30509 \
+        --service 0x1111 \
+        --method 0x3333 \
+        --client 0x5555 \
+        --session 1 \
+        --print-recv \
+        --print-hdr \
+        --print-data \
+        --stdin
+cmd> [ENTER]
+List of command:
+        abs
+        cos
+        div
+        mul
+        pow2
+        sin
+        sub
+        sum
+cmd> abs -5
+service:        0x1111
+method: 0x3337
+length: 16
+client: 0x5555
+session:        0x0001
+proto:  0x01
+iface:  0x00
+type:   0x00    REQUEST
+code:   0x00
+data:   00 00 00 00 00 00 14 C0
+
+recv:   24
+service:        0x1111
+method: 0x3337
+length: 16
+client: 0x5555
+session:        0x0001
+proto:  0x01
+iface:  0x00
+type:   0x80    RESPONSE
+code:   0x00
+data:   00 00 00 00 00 00 14 "@"
+
+[1111.3337] Result: 5
+
+cmd> div 3.14 6
+service:        0x1111
+method: 0x3341
+length: 24
+client: 0x5555
+session:        0x0001
+proto:  0x01
+iface:  0x00
+type:   0x00    REQUEST
+code:   0x00
+data:   1F 85 EB "Q" B8 1E 09 "@" 00 00 00 00 00 00 18 "@"
+
+recv:   24
+service:        0x1111
+method: 0x3341
+length: 16
+client: 0x5555
+session:        0x0001
+proto:  0x01
+iface:  0x00
+type:   0x80    RESPONSE
+code:   0x00
+data:   BF "X" F2 8B "%" BF E0 "?"
+
+[1111.3341] Result: 0.523
+cmd> sin 0.523
+service:        0x1111
+method: 0x3335
+length: 16
+client: 0x5555
+session:        0x0001
+proto:  0x01
+iface:  0x00
+type:   0x00    REQUEST
+code:   0x00
+data:   "#" DB F9 "~j" BC E0 "?"
+
+recv:   24
+service:        0x1111
+method: 0x3335
+length: 16
+client: 0x5555
+session:        0x0001
+proto:  0x01
+iface:  0x00
+type:   0x80    RESPONSE
+code:   0x00
+data:   "&" 84 BA A5 80 F7 DF "?"
+
+[1111.3335] Result: 0.499
+cmd> CTRL+D
+$
+..............................

@@ -1,6 +1,7 @@
 *~
 *.o
 *.gdb
+index.html
 someip.mk
 hello/hello-cli
 hello/hello-srv

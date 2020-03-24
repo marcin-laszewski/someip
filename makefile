@@ -53,6 +53,7 @@ help::
 	@echo 'make		$(SR_OUT)'
 	@echo 'make	run-$(CL_OUT)'
 	@echo 'make	run-$(SR_OUT)'
+	@echo 'make	doc'
 	@echo 'make	distclean'
 	@echo 'make		clean'
 
@@ -109,3 +110,10 @@ clean-baks::
 clean-outs::
 	@echo '[CLEAN]	outs'
 	@$(RM) $(OUTS)
+
+#--- doc ---------------------
+doc::	index.html
+
+%.html: %.txt
+	@echo '[DOC]	' $< ' -> ' $@
+	@asciidoc $^
