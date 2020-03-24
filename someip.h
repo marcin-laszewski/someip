@@ -1,7 +1,7 @@
 #if !defined(SOMEIP_H)
 #define	SOMEIP_H
 
-#include <conv.h>
+#include <arpa/inet.h>
 
 #define	someip_len_HDR1	8
 #define	someip_len_HDR2	8
@@ -54,8 +54,8 @@ struct someip
 	unsigned char	data[0];
 };
 
-#define	someip_u2(a)	conv_u2(a)
-#define	someip_u4(a)	conv_u4(a)
+#define	someip_u2(a)	htons(a)
+#define	someip_u4(a)	htonl(a)
 
 #define	someip_set_u1(o, f, value)	(((o)->f) = (unsigned char)(value))
 #define	someip_set_u2(o, f, value)	(((o)->f) = someip_u2(value))
