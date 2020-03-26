@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,10 @@
 
 #define	CL_DATA	"World"
 #define	CL_DATA_LEN	(sizeof(CL_DATA) - 1)
+
+#if !defined(UNIX_LOCAL)
+#	define	UNIX_LOCAL	"/tmp/hello-cli"
+#endif
 
 /*
 	Message ...
@@ -34,18 +39,25 @@
 void usage_exit(char const * progname)
 {
 	fputs(progname, stderr);
-	fputs(
-		" [--loop ms] [--print-hdr] [--print-data] [--print-recv] [--timeout sec]"
-		" {--udp inet-addr port} {--service id} {--method id} {--client id} {--session id}\n",
+	fputs(" \\\n"
+		"\t[--loop ms] [--timeout sec] \\\n"
+		"\t[--print-hdr] [--print-data] [--print-recv] \\\n"
+		"\t[--stdin] \\\n"
+		"\t{--udp inet-addr port | --unix-dgram path} [--unix-dgram-local path] \\\n"
+		"\t{--service id} {--method id} {--client id} {--session id}"
+		"\n",
 		stderr);
 	exit(1);
 }
 
-int set_data_n(struct someip * o, unsigned short method, unsigned n, int i, double * tab)
+int
+set_data_n(struct someip * o, unsigned short method,
+	unsigned n, int i, double * tab)
 {
 	if(--i != n)
 	{
-		fprintf(stderr, "Incorrect nunmber of expected arguments [%u]: %d\n", n, i);
+		fprintf(stderr, "Incorrect nunmber of expected arguments [%u]: %d\n",
+			n, i);
 		return -1;
 	}
 
@@ -67,8 +79,7 @@ static	int cmd_cmp(char const * name, struct cmd * cmd)
 	return strcmp(name, cmd->name);
 }
 
-
-#define	arg_MANDATORY	(arg_UDP | arg_SERVICE | arg_METHOD | arg_CLIENT | arg_SESSION)
+#define	arg_MANDATORY	(arg_SERVICE | arg_METHOD | arg_CLIENT | arg_SESSION)
 
 static struct cmd cmds[] =
 {
@@ -89,9 +100,23 @@ main(int argc, char *argv[])
 {
 	char const	*host	= NULL;
 	char const	*port	= NULL;
+	struct sockaddr_in	addr_cli_in;
+	struct sockaddr_in	addr_srv_in;
+
+	char path_local[UNIX_PATH_MAX];
+	char const	*unix_dgram_local = UNIX_LOCAL;
+	char const	*unix_dgram_remote;
+	struct sockaddr_un	addr_cli_un;
+	struct sockaddr_un	addr_srv_un;
+
 	unsigned loop	= UINT_MAX;
-	struct sockaddr_in	addr;
-	struct sockaddr_in	addr_sender;
+
+	struct sockaddr *	addr_cli;
+	socklen_t	addr_cli_len;
+
+	struct sockaddr *	addr_srv;
+	socklen_t	addr_srv_len;
+
 	int s;
 	unsigned char	buf[BUFLEN];
 	ssize_t	i;
@@ -176,6 +201,21 @@ main(int argc, char *argv[])
 				port = argv[++i];
 				arg_mask |= arg_UDP;
 			}
+			else if(!strcmp(argv[i], "--unix-dgram"))
+			{
+				if(i + 1 >= argc)
+					usage_exit(argv[0]);
+
+				unix_dgram_remote = argv[++i];
+				arg_mask |= arg_UNIX_DGRAM;
+			}
+			else if(!strcmp(argv[i], "--unix-dgram-local"))
+			{
+				if(i + 1 >= argc)
+					usage_exit(argv[0]);
+
+				unix_dgram_local = argv[++i];
+			}
 			else
 				usage_exit(argv[0]);
 		}
@@ -184,21 +224,73 @@ main(int argc, char *argv[])
 	if((arg_mask & arg_MANDATORY) != arg_MANDATORY)
 		usage_exit(argv[0]);
 
-	if(net_addr(host, atoi(port), &addr) == NULL)
+	switch(arg_mask & arg_NET)
 	{
-		fputs("Incorrect adress/port: ", stderr);
-		fputs(argv[1], stderr);
-		fputc(':', stderr);
-		fputs(argv[2], stderr);
-		fputc('\n', stderr);
-		return 2;
+		case arg_UDP:
+			if(net_inet_addr(&addr_srv_in, host, atoi(port)) == NULL)
+			{
+				fputs("Incorrect adress/port: ", stderr);
+				fputs(argv[1], stderr);
+				fputc(':', stderr);
+				fputs(argv[2], stderr);
+				fputc('\n', stderr);
+				return 2;
+			}
+
+			s = net_udp_socket();
+			if(s < 0)
+			{
+				fputs("socket(UDP)\n", stderr);
+				return 3;
+			}
+
+			addr_srv = (struct sockaddr *)&addr_srv_in;
+			addr_srv_len = sizeof(addr_srv_in);
+
+			addr_cli = (struct sockaddr *)&addr_cli_in;
+			addr_cli_len = sizeof(addr_cli_in);
+
+			break;
+
+		case arg_UNIX_DGRAM:
+			s = net_unix_dgram_socket();
+			if(s < 0)
+			{
+				fputs("socket(UNIX)\n", stderr);
+				return 3;
+			}
+
+			sprintf(path_local, "%s.%u", unix_dgram_local, (unsigned)getpid());
+			if(net_unix_addr(&addr_cli_un, path_local) < 0)
+			{
+				fputs("addr-cli(UNIX): ", stderr);
+				fputs(path_local, stderr);
+				fputc('\n', stderr);
+				return 3;
+			}
+
+			addr_cli = (struct sockaddr *)&addr_cli_un;
+			addr_cli_len =
+				sizeof(addr_cli_un.sun_family) + strlen(addr_cli_un.sun_path);
+
+			if(net_unix_addr(&addr_srv_un, unix_dgram_remote) < 0)
+			{
+				fputs("addr-srv(UNIX): ", stderr);
+				fputs(unix_dgram_remote, stderr);
+				fputc('\n', stderr);
+				return 3;
+			}
+
+			addr_srv = (struct sockaddr *)&addr_srv_un;
+			addr_srv_len = sizeof(addr_srv_un);
+
+			break;
 	}
 
-	s = net_udp_socket();
-	if(s < 0)
+	if(bind(s, addr_cli, addr_cli_len) < 0)
 	{
-		fputs("socket(UDP)\n", stderr);
-		return 3;
+		perror("bind");
+		return 4;
 	}
 
 	for(;;)
@@ -226,7 +318,8 @@ main(int argc, char *argv[])
 				{
 					struct cmd * c;
 
-					c = (struct cmd *)bsearch(cmd, cmds, cmds_n, sizeof(*cmds), (__compar_fn_t)cmd_cmp);
+					c = (struct cmd *)bsearch(cmd, cmds, cmds_n, sizeof(*cmds),
+															(__compar_fn_t)cmd_cmp);
 
 					if(c == NULL)
 					{
@@ -264,14 +357,14 @@ main(int argc, char *argv[])
 
 		someip_print_msg(o, arg_mask);
 
-		i = someip_send(s, o, (struct sockaddr *)&addr, sizeof(addr));
+		i = someip_send(s, o, addr_srv, addr_srv_len);
 		if(i < 0)
 		{
 			perror("someip_send()");
 			return 4;
 		}
 
-		i = someip_recv(s, (struct someip *)buf, sizeof(buf), (struct sockaddr *)&addr_sender, sizeof(addr_sender), to);
+		i = someip_recv(s, (struct someip *)buf, sizeof(buf), NULL, NULL, to);
 		if(i < 0)
 		{
 			fputs("someip_recv()\n", stderr);
@@ -310,4 +403,14 @@ main(int argc, char *argv[])
 					break;
 		}
 	}
+
+	if((arg_mask & arg_NET) == arg_UNIX_DGRAM)
+		if(unlink(path_local) < 0
+		&& errno != ENOENT)
+		{
+			perror(path_local);
+			return 5;
+		}
+
+	return 0;
 }

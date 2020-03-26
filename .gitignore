@@ -4,4 +4,5 @@
 index.html
 someip.mk
 hello/hello-cli
+hello/hello-cli.cmd
 hello/hello-srv

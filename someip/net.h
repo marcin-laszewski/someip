@@ -6,7 +6,9 @@
 
 #include <someip.h>
 
-ssize_t	someip_recv(int s, struct someip * o, size_t len, struct sockaddr * addr, socklen_t addr_len, unsigned to);
-ssize_t	someip_send(int s, struct someip * o, struct sockaddr * addr, socklen_t addr_len);
+ssize_t	someip_recv(int s, struct someip * o, size_t len,
+    struct sockaddr * addr, socklen_t *addr_len, unsigned to);
+ssize_t	someip_send(int s, struct someip * o,
+    struct sockaddr * addr, socklen_t addr_len);
 
 #endif

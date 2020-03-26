@@ -11,10 +11,12 @@ CL_OUT	= hello/$(CL)
 CL_OBJS	= \
 	hello/cli.o \
 	$(ML)/file/select/read.o \
-	$(ML)/net/addr.o \
-	$(ML)/net/addr/hostent.o \
-	$(ML)/net/addr/name.o \
+	$(ML)/net/inet/addr.o \
+	$(ML)/net/inet/addr/hostent.o \
+	$(ML)/net/inet/addr/name.o \
 	$(ML)/net/udp/socket.o \
+	$(ML)/net/unix/addr.o \
+	$(ML)/net/unix/dgram/socket.o \
 	print/data.o \
 	print/hdr.o \
 	print/msg.o \
@@ -31,8 +33,11 @@ SR_OBJS	= \
 	hello/srv.o \
 	$(ML)/file/select/read.o \
 	$(ML)/file/select/write.o \
-	$(ML)/net/inet/bind/any.o \
+	$(ML)/net/inet/addr/any.o \
+	$(ML)/net/inet/addr/ip.o \
 	$(ML)/net/udp/socket.o \
+	$(ML)/net/unix/addr.o \
+	$(ML)/net/unix/dgram/socket.o \
 	print/data.o \
 	print/hdr.o \
 	print/msg.o \
@@ -84,7 +89,8 @@ run-$(CL_OUT): $(CL_OUT)
 		--print-recv \
 		--print-hdr \
 		--print-data \
-		--stdin
+		--stdin \
+	< $<.cmd
 
 $(CL_OUT): $(CL_OBJS)
 

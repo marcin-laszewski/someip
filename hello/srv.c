@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,13 +16,17 @@
 #define	SR_DATA	"Hello World"
 #define	SR_DATA_LEN	(sizeof(SR_DATA) - 1)
 
-#define	arg_MANDATORY	(arg_UDP)
+#define	arg_MANDATORY	(arg_UDP | arg_UNIX_DGRAM)
 
 static	void
 usage_exit(char const * progname)
 {
 	fputs(progname, stderr);
-	fputs(" {--udp port}\n", stderr);
+	fputs(" \\\n"
+		"\t[--client] [--method] [--service] [--session] [--protocol] \\\n"
+		"\t[--print-data] [--print-hdr] [--print-recv] \\\n"
+		"\t{--udp port | --unix-dgram path}"
+		"\n", stderr);
 	exit(1);
 }
 
@@ -42,12 +47,24 @@ void set_result(struct someip * o, double result)
 int
 main(int argc, char *argv[])
 {
+	char const *	port;
+	struct sockaddr_in addr_srv_in;
+	struct sockaddr_in addr_cli_in;
+
+	char const *	unix_dgram;
+	struct sockaddr_un addr_srv_un;
+	struct sockaddr_un addr_cli_un;
+
+	struct sockaddr *	addr_srv;
+	socklen_t	addr_srv_len;
+
+	struct sockaddr *	addr_cli;
+	socklen_t	addr_cli_len;
+
 	int s;
 	unsigned char	buf[BUFLEN];
 	ssize_t	i;
-	char const *	port;
 	struct someip *	o	= (struct someip *)buf;
-	struct sockaddr_in addr_sender;
 	size_t	len = someip_len_HDR1 + SR_DATA_LEN;
 	unsigned	arg_mask = 0;
 	unsigned short	client;
@@ -118,32 +135,90 @@ main(int argc, char *argv[])
 				port = argv[++i];
 				arg_mask |= arg_UDP;
 			}
+			else if(!strcmp(argv[i], "--unix-dgram"))
+			{
+				if(i + 1 >= argc)
+					usage_exit(argv[0]);
+
+				unix_dgram = argv[++i];
+				arg_mask |= arg_UNIX_DGRAM;
+			}
 			else
 				usage_exit(argv[0]);
 		}
 	}
 
-	if((arg_mask & arg_MANDATORY) != arg_MANDATORY)
-		usage_exit(argv[0]);
-
-	s = net_udp_socket();
-	if(s < 0)
+	switch(arg_mask & arg_MANDATORY)
 	{
-		fputs("socket(UDP)\n", stderr);
-		return 3;
+		case arg_UDP:
+			s = net_udp_socket();
+			if(s < 0)
+			{
+				fputs("socket(UDP)\n", stderr);
+				return 3;
+			}
+
+
+			addr_cli = (struct sockaddr *)&addr_cli_in;
+			addr_cli_len = sizeof(addr_cli_in);
+
+			net_inet_addr_any(&addr_srv_in, atoi(port));
+
+			addr_srv = (struct sockaddr *)&addr_srv_in;
+			addr_srv_len = sizeof(addr_srv_in);
+
+			break;
+
+		case arg_UNIX_DGRAM:
+			s = net_unix_dgram_socket();
+			if(s < 0)
+			{
+				fputs("socket(UNIX)\n", stderr);
+				return 3;
+			}
+
+			if(unlink(unix_dgram) < 0
+			&& errno != ENOENT)
+			{
+				perror(unix_dgram);
+				return 5;
+			}
+
+			{
+				int i;
+
+				i = net_unix_addr(&addr_srv_un, unix_dgram);
+				if(i < 0)
+				{
+					fputs("Incorrect path: ", stderr);
+					fputs(unix_dgram, stderr);
+					fputc('\n', stderr);
+					return 2;
+				}
+
+				addr_srv = (struct sockaddr *)&addr_srv_un;
+				addr_srv_len = sizeof(addr_srv_un);
+
+				addr_cli = (struct sockaddr *)&addr_cli_un;
+				addr_cli_len = sizeof(addr_cli_un);
+			}
+
+			break;
+
+		default:
+			usage_exit(argv[0]);
 	}
 
-	if(net_inet_bind_any(s, atoi(port)) < 0)
+	if(bind(s, addr_srv, addr_srv_len) < 0)
 	{
-		fputs("Cannot bind port: ", stderr);
-		fputs(argv[1], stderr);
-		fputc('\n', stderr);
-		return 2;
+		perror("bind");
+		return 4;
 	}
 
 	while(1)
 	{
-		i = someip_recv(s, (struct someip *)buf, sizeof(buf), (struct sockaddr *)&addr_sender, sizeof(addr_sender), 0);
+		i = someip_recv(s, (struct someip *)buf, sizeof(buf),
+					addr_cli, &addr_cli_len, 0);
 		if(i < 0)
 		{
 			fputs("someip_recv()\n", stderr);
@@ -207,7 +282,7 @@ main(int argc, char *argv[])
 
 			someip_print_msg(o, arg_mask);
 
-			i = someip_send(s, o, (struct sockaddr *)&addr_sender, sizeof(addr_sender));
+			i = someip_send(s, o, addr_cli, addr_cli_len);
 			if(i < 0)
 			{
 				perror("someip_send()");

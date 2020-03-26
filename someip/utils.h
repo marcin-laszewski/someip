@@ -19,8 +19,11 @@
 #define	arg_PRINT_RECV	(1 << 11)
 #define	arg_TIMEOUT	(1 << 12)
 #define	arg_STDIN	(1 << 13)
+#define	arg_UNIX_DGRAM	(1	<< 14)
 
 #define	arg_PRINT	(arg_PRINT_DATA | arg_PRINT_HDR | arg_PRINT_RECV)
+
+#define	arg_NET	(arg_UDP | arg_UNIX_DGRAM)
 
 #if defined(__cplusplus)
 extern "C" {
