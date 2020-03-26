@@ -37,6 +37,8 @@ void set_error(struct someip * o, char const * msg)
 	someip_set_data(o, msg, strlen(msg));
 }
 
+#define	get_arg_double(o)	((double *)&((o)->data))
+
 void set_result(struct someip * o, double result)
 {
 	someip_set_code(o, someip_code_OK);
@@ -189,22 +191,20 @@ main(int argc, char *argv[])
 
 		if(i > someip_len_HDR1 + someip_len_HDR2)
 		{
-			double * d = (double *)&(o->data);
-
 			someip_print_msg((struct someip *)buf, arg_mask);
 
 			switch(someip_u2(o->method))
 			{
-				case	method_POW2:	set_result(o, pow(*d, 2));	break;
-				case	method_SIN:	set_result(o, sin(*d));	break;
-				case	method_COS:	set_result(o, cos(*d));	break;
-				case	method_ABS:	set_result(o, fabs(*d));	break;
-				case	method_SUM:	set_result(o, d[0] + d[1]);	break;
-				case	method_SUB:	set_result(o, d[0] - d[1]);	break;
-				case	method_MUL:	set_result(o, d[0] * d[1]);	break;
+				case	method_POW2:	set_result(o, pow(*get_arg_double(o), 2));	break;
+				case	method_SIN:	set_result(o, sin(*get_arg_double(o)));	break;
+				case	method_COS:	set_result(o, cos(*get_arg_double(o)));	break;
+				case	method_ABS:	set_result(o, fabs(*get_arg_double(o)));	break;
+				case	method_SUM:	set_result(o, get_arg_double(o)[0] + get_arg_double(o)[1]);	break;
+				case	method_SUB:	set_result(o, get_arg_double(o)[0] - get_arg_double(o)[1]);	break;
+				case	method_MUL:	set_result(o, get_arg_double(o)[0] * get_arg_double(o)[1]);	break;
 				case	method_DIV:
-					if(d[1])
-						set_result(o, d[0] / d[1]);
+					if(get_arg_double(o)[1])
+						set_result(o, get_arg_double(o)[0] / get_arg_double(o)[1]);
 					else
 						set_error(o, "Div by zero.");
 					break;
