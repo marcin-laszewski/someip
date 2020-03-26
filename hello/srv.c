@@ -81,70 +81,30 @@ main(int argc, char *argv[])
 
 		for(i = 1; i < argc; i++)
 		{
-			if(!strcmp(argv[i], "--client"))
+			if(someip_args_someip(argc, argv, &i, &arg_mask, usage_exit,
+				&service, &method, &client, &session))
+			if(someip_args_print(argc, argv, &i, &arg_mask))
+			if(someip_args_unix_dgram(argc, argv, &i, usage_exit, &arg_mask, &unix_dgram))
 			{
-				i++;
-				if(i >= argc)
-					usage_exit(argv[0]);
+				if(!strcmp(argv[i], "--protocol"))
+				{
+					i++;
+					if(i >= argc)
+						usage_exit(argv[0]);
 
-				client = strtold(argv[i], NULL);
-			}
-			else if(!strcmp(argv[i], "--method"))
-			{
-				i++;
-				if(i >= argc)
-					usage_exit(argv[0]);
+					proto = strtold(argv[i], NULL);
+				}
+				else if(!strcmp(argv[i], "--udp"))
+				{
+					if(i + 2 >= argc)
+						usage_exit(argv[0]);
 
-				method = strtold(argv[i], NULL);
-			}
-			else if(!strcmp(argv[i], "--print-data"))
-				arg_mask |= arg_PRINT_DATA;
-			else if(!strcmp(argv[i], "--print-hdr"))
-				arg_mask |= arg_PRINT_HDR;
-			else if(!strcmp(argv[i], "--print-recv"))
-				arg_mask |= arg_PRINT_RECV;
-			else if(!strcmp(argv[i], "--protocol"))
-			{
-				i++;
-				if(i >= argc)
+					port = argv[++i];
+					arg_mask |= arg_UDP;
+				}
+				else
 					usage_exit(argv[0]);
-
-				proto = strtold(argv[i], NULL);
 			}
-			else if(!strcmp(argv[i], "--service"))
-			{
-				i++;
-				if(i >= argc)
-					usage_exit(argv[0]);
-
-				service = strtold(argv[i], NULL);
-			}
-			else if(!strcmp(argv[i], "--session"))
-			{
-				i++;
-				if(i >= argc)
-					usage_exit(argv[0]);
-
-				session = strtold(argv[i], NULL);
-			}
-			else if(!strcmp(argv[i], "--udp"))
-			{
-				if(i + 1 >= argc)
-					usage_exit(argv[0]);
-
-				port = argv[++i];
-				arg_mask |= arg_UDP;
-			}
-			else if(!strcmp(argv[i], "--unix-dgram"))
-			{
-				if(i + 1 >= argc)
-					usage_exit(argv[0]);
-
-				unix_dgram = argv[++i];
-				arg_mask |= arg_UNIX_DGRAM;
-			}
-			else
-				usage_exit(argv[0]);
 		}
 	}
 

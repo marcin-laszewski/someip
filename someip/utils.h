@@ -29,6 +29,19 @@
 extern "C" {
 #endif
 
+int	someip_args_print(int argc, char * const * argv, unsigned * i,
+        unsigned * mask);
+int someip_args_someip(int args, char * const * argv, unsigned * i,
+        unsigned * mask, void (* usage_exit)(char const *),
+        unsigned short * service, unsigned short * method,
+        unsigned short * client, unsigned short * session);
+int someip_args_udp(int argc, char * const * argv, unsigned * i,
+        void (* usage_exit)(char const *), unsigned * mask,
+        const char **host, const char **port);
+int	someip_args_unix_dgram(int argc, char * const * argv, unsigned * i,
+        void (* usage_exit)(char const *), unsigned * mask,
+        char const **remote);
+
 void	someip_print_data(struct someip * data);
 void	someip_print_hdr(struct someip * data);
 void	someip_print_msg(struct someip * o, unsigned arg_mask);

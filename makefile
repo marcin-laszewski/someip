@@ -6,9 +6,16 @@ CFLAGS	+= -I$(ML)/include
 CFLAGS	+= -g
 #CFLAGS	+= -O
 
+ARGS_OBJS = \
+	args/print.o \
+	args/someip.o \
+	args/unix/dgram.o \
+
+
 CL	= hello-cli
 CL_OUT	= hello/$(CL)
 CL_OBJS	= \
+	$(ARGS_OBJS) \
 	hello/cli.o \
 	$(ML)/file/select/read.o \
 	$(ML)/net/inet/addr.o \
@@ -30,6 +37,7 @@ OUTS +=	$(CL_OUT)
 SR	= hello-srv
 SR_OUT	= hello/$(SR)
 SR_OBJS	= \
+	$(ARGS_OBJS) \
 	hello/srv.o \
 	$(ML)/file/select/read.o \
 	$(ML)/file/select/write.o \
