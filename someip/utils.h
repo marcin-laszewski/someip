@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <someip.h>
 
-#define	arg_UDP	(1	<< 0)
+#define	arg_NET			(1 << 0)
 #define	arg_SERVICE	(1 << 1)
 #define	arg_METHOD	(1 << 2)
 #define	arg_CLIENT	(1 << 3)
@@ -19,19 +19,22 @@
 #define	arg_PRINT_RECV	(1 << 11)
 #define	arg_TIMEOUT	(1 << 12)
 #define	arg_STDIN	(1 << 13)
-#define	arg_UNIX_DGRAM	(1	<< 14)
-#define	arg_UNIX_STREAM	(1 << 15)
+#define	arg_net_DOMAIN	(1	<< 14)
+#define	arg_net_TYPE		(1 << 15)
 
 #define	arg_PRINT	(arg_PRINT_DATA | arg_PRINT_HDR | arg_PRINT_RECV)
 
-#define	arg_DGRAM	(arg_UDP | arg_UNIX_DGRAM)
-#define	arg_STREAM	(arg_UNIX_STREAM)
-#define	arg_NET	(arg_DGRAM | arg_STREAM)
-#define	arg_UNIX	(arg_UNIX_DGRAM | arg_UNIX_STREAM)
+#define	arg_net_domain_UNIX	arg_net_DOMAIN
+#define	arg_net_domain_IP		0
 
-#define	is_DGRAM(m)		((m) & arg_DGRAM)
-#define	is_STREAM(m)	((m) & arg_STREAM)
-#define	is_UNIX(m)		((m) & arg_UNIX)
+#define	is_UNIX(m)	((m) & arg_net_domain_UNIX)
+#define	is_IP(m)		(!is_UNIX(m))
+
+#define	arg_net_type_DGRAM	arg_net_TYPE
+#define	arg_net_type_STREAM	0
+
+#define	is_DGRAM(m)		((m) & arg_net_type_DGRAM)
+#define	is_STREAM(m)	(!is_DGRAM(m))
 
 #if defined(__cplusplus)
 extern "C" {
@@ -62,6 +65,5 @@ char const *	someip_type_text(unsigned char type);
 #if defined(__cplusplus)
 }
 #endif
-
 
 #endif

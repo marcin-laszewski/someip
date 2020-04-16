@@ -22,7 +22,7 @@
 #define	SR_DATA	"Hello World"
 #define	SR_DATA_LEN	(sizeof(SR_DATA) - 1)
 
-#define	arg_MANDATORY	(arg_UDP | arg_UNIX_DGRAM)
+#define	arg_MANDATORY	arg_NET
 
 static	void
 usage_exit(char const * progname)
@@ -144,7 +144,7 @@ main(int argc, char *argv[])
 						usage_exit(argv[0]);
 
 					port = argv[++i];
-					arg_mask |= arg_UDP;
+					arg_mask |= (arg_NET | arg_net_domain_IP | arg_net_type_DGRAM);
 				}
 				else
 					usage_exit(argv[0]);
@@ -152,9 +152,10 @@ main(int argc, char *argv[])
 		}
 	}
 
-	switch(arg_mask & arg_NET)
+	if(is_IP(arg_mask))
 	{
-		case arg_UDP:
+		if(is_DGRAM(arg_mask))
+		{
 			s = net_udp_socket();
 			if(s < 0)
 			{
@@ -170,32 +171,23 @@ main(int argc, char *argv[])
 
 			addr_srv = (struct sockaddr *)&addr_srv_in;
 			addr_srv_len = sizeof(addr_srv_in);
-
-			break;
-
-		case arg_UNIX_DGRAM:
-			s = srv_unix(
-						&addr_srv, &addr_srv_len,
-						&addr_cli, &addr_cli_len,
-						&addr_srv_un,
-						&addr_cli_un,
-						SOCK_DGRAM,
-						unix_path);
-			break;
-
-		case arg_UNIX_STREAM:
-			s = srv_unix(
-						&addr_srv, &addr_srv_len,
-						&addr_cli, &addr_cli_len,
-						&addr_srv_un,
-						&addr_cli_un,
-						SOCK_STREAM,
-						unix_path);
-			break;
-
-		default:
-			usage_exit(argv[0]);
+		}
+		else
+		{
+			fputs("Not supported IP type.\n", stderr);
+			return 2;
+		}
 	}
+	else
+		s = srv_unix(
+					&addr_srv, &addr_srv_len,
+					&addr_cli, &addr_cli_len,
+					&addr_srv_un,
+					&addr_cli_un,
+					is_DGRAM(arg_mask)
+					? SOCK_DGRAM
+					: SOCK_STREAM,
+					unix_path);
 
 	if(bind(s, addr_srv, addr_srv_len) < 0)
 	{

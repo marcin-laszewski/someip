@@ -85,7 +85,7 @@ static	int cmd_cmp(char const * name, struct cmd * cmd)
 	return strcmp(name, cmd->name);
 }
 
-#define	arg_MANDATORY	(arg_SERVICE | arg_METHOD | arg_CLIENT | arg_SESSION)
+#define	arg_MANDATORY	(arg_NET | arg_SERVICE | arg_METHOD | arg_CLIENT | arg_SESSION)
 
 static struct cmd cmds[] =
 {
@@ -193,7 +193,7 @@ main(int argc, char *argv[])
 
 					host = argv[++i];
 					port = argv[++i];
-					arg_mask |= arg_UDP;
+					arg_mask |= (arg_net_domain_IP | arg_net_type_DGRAM);
 				}
 				else if(!strcmp(argv[i], "--stdin"))
 					arg_mask |= arg_STDIN;
@@ -236,9 +236,10 @@ main(int argc, char *argv[])
 	if((arg_mask & arg_MANDATORY) != arg_MANDATORY)
 		usage_exit(argv[0]);
 
-	switch(arg_mask & arg_NET)
+	if(is_IP(arg_mask))
 	{
-		case arg_UDP:
+		if(is_DGRAM(arg_mask))
+		{
 			if(net_inet_addr(&addr_srv_in, host, atoi(port)) == NULL)
 			{
 				fputs("Incorrect adress/port: ", stderr);
@@ -261,31 +262,24 @@ main(int argc, char *argv[])
 
 			addr_cli = (struct sockaddr *)&addr_cli_in;
 			addr_cli_len = sizeof(addr_cli_in);
-
-			break;
-
-		case arg_UNIX_DGRAM:
-			s = cli_open(
-						&addr_srv, &addr_srv_len,
-						&addr_cli, &addr_cli_len,
-						&addr_srv_un,
-						&addr_cli_un,
-						SOCK_DGRAM,
-						unix_remote,
-						unix_local);
-			break;
-
-		case arg_UNIX_STREAM:
-			s = cli_open(
-						&addr_srv, &addr_srv_len,
-						&addr_cli, &addr_cli_len,
-						&addr_srv_un,
-						&addr_cli_un,
-						SOCK_STREAM,
-						unix_remote,
-						unix_local);
-			break;
+		}
+		else
+		{
+			fputs("Not supported IP type.\n", stderr);
+			return 2;
+		}
 	}
+	else
+		s = cli_open(
+					&addr_srv, &addr_srv_len,
+					&addr_cli, &addr_cli_len,
+					&addr_srv_un,
+					&addr_cli_un,
+					is_DGRAM(arg_mask)
+					? SOCK_DGRAM
+					: SOCK_STREAM,
+					unix_remote,
+					unix_local);
 
 	if(bind(s, addr_cli, addr_cli_len) < 0)
 	{

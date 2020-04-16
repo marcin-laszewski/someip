@@ -13,7 +13,7 @@ someip_args_unix_stream(int argc, char * const * argv, unsigned * i,
 		usage_exit(argv[0]);
 
 	*path = argv[++(*i)];
-	*mask |= arg_UNIX_STREAM;
+	*mask |= (arg_NET | arg_net_domain_UNIX | arg_net_type_STREAM);
 
 	return 0;
 }

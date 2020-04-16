@@ -13,7 +13,7 @@ someip_args_unix_dgram(int argc, char * const * argv, unsigned * i,
 		usage_exit(argv[0]);
 
 	*remote = argv[++(*i)];
-	*mask |= arg_UNIX_DGRAM;
+	*mask |= (arg_NET | arg_net_domain_UNIX | arg_net_type_DGRAM);
 
 	return 0;
 }
