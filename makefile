@@ -131,11 +131,18 @@ run-$(CL_OUT): $(CL_OUT)
 		--stdin \
 	< $<.cmd
 
+run-cli-ip-stream: $(CL_OUT)
+	./$< $(si_opts) $(print_opts) \
+		--timeout 15 \
+		--tcp 127.0.0.1 $(si_port) \
+		--stdin \
+
 run-cli-unix-stream: $(CL_OUT)
 	./$< $(si_opts) $(print_opts) \
 		--timeout 15 \
 		--unix-stream /tmp/hello-srv \
 		--stdin \
+
 		#< hello-cli.cmd
 #	--unix-dgram /tmp/hello-srv \
 #	--unix-dgram /tmp/vsomeip-0 \
@@ -149,6 +156,10 @@ debug-$(SR_OUT): $(SR_OUT)
 
 run-$(SR_OUT): $(SR_OUT)
 	./$< --udp $(si_port)
+
+run-srv-ip-stream: $(SR_OUT)
+	./$< $(si_opts) $(print_opts) \
+		--tcp $(si_port)
 
 run-srv-unx-stream: $(SR_OUT)
 	./$< $(si_opts) $(print_opts) \

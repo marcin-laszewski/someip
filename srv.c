@@ -53,6 +53,41 @@ void set_result(struct someip * o, double result)
 	someip_set_len(o, sizeof(result));
 }
 
+
+static int
+srv_ip(
+	struct sockaddr ** srv, socklen_t * srv_len,
+	struct sockaddr ** cli, socklen_t * cli_len,
+	struct sockaddr_in * srv_in,
+	struct sockaddr_in * cli_in,
+	int type, char const * port)
+{
+	int s;
+
+	s = socket(AF_INET, type, 0);
+	if(s < 0)
+		return -1;
+
+	net_inet_addr_any(srv_in, atoi(port));
+	*srv = (struct sockaddr *)srv_in;
+	*srv_len = sizeof(*srv_in);
+
+	*cli = (struct sockaddr *)cli_in;
+	*cli_len = sizeof(*cli_in);
+
+	/*
+	{
+		unsigned char reuse_addr = 1;
+		unsigned char linger_opt = 0;
+
+		setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
+		setsockopt(s, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(SO_LINGER));
+	}
+	*/
+
+	return s;
+}
+
 static int
 srv_unix(
 	struct sockaddr ** srv, socklen_t * srv_len,
@@ -161,43 +196,15 @@ main(int argc, char *argv[])
 	}
 
 	if(is_IP(arg_mask))
-	{
-		if(is_DGRAM(arg_mask))
-		{
-			s = net_udp_socket();
-			if(s < 0)
-			{
-				fputs("socket(UDP)\n", stderr);
-				return 3;
-			}
-		}
-		else
-		{
-			s = socket(AF_INET, SOCK_STREAM, 0);
-			if(s < 0)
-			{
-				fputs("socket(TCP)\n", stderr);
-				return 3;
-			}
-
-			/*
-			{
-				unsigned char reuse_addr = 1;
-				unsigned char linger_opt = 0;
-
-				setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
-				setsockopt(s, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(SO_LINGER));
-			}
-			*/
-
-			net_inet_addr_any(&addr_srv_in, atoi(port));
-			addr_srv = (struct sockaddr *)&addr_srv_in;
-			addr_srv_len = sizeof(addr_srv_in);
-
-			addr_cli = (struct sockaddr *)&addr_cli_in;
-			addr_cli_len = sizeof(addr_cli_in);
-		}
-	}
+		s = srv_ip(
+					&addr_srv, &addr_srv_len,
+					&addr_cli, &addr_cli_len,
+					&addr_srv_in,
+					&addr_cli_in,
+					is_DGRAM(arg_mask)
+					? SOCK_DGRAM
+					: SOCK_STREAM,
+					port);
 	else
 		s = srv_unix(
 					&addr_srv, &addr_srv_len,
