@@ -10,6 +10,11 @@
 #include <someip/utils.h>
 
 #include "config.h"
+#include "utils.h"
+
+#if !defined(STREAM_TIMEOUT)
+#	define	STREAM_TIMEOUT	1
+#endif
 
 #define	BUFLEN	4096
 #define	STDIN_BUFLEN	256
@@ -95,6 +100,50 @@ static struct cmd cmds[] =
 
 #define	cmds_n	(sizeof(cmds) / sizeof(*cmds))
 
+static int
+cli_open(
+	struct sockaddr ** srv, socklen_t * srv_len,
+	struct sockaddr ** cli, socklen_t * cli_len,
+	struct sockaddr_un * srv_un,
+	struct sockaddr_un * cli_un,
+	int type,
+	char const * path_remote,
+	char const * path_local)
+{
+	int s;
+
+	s = unix_open(srv, srv_len, type, srv_un, path_remote);
+	if(s < 0)
+		return 3;
+
+	{
+		char path[UNIX_PATH_MAX];
+
+		sprintf(path, "%s.%u", path_local, (unsigned)getpid());
+		if(unix_unlink(path_local))
+			return 2;
+
+		{
+			socklen_t i;
+
+			i = net_unix_addr(cli_un, path);
+			if(i < 0)
+			{
+				fputs("addr-cli(UNIX): ", stderr);
+				fputs(path_local, stderr);
+				fputc('\n', stderr);
+				return 3;
+			}
+
+			*cli_len = i;
+		}
+	}
+
+	*cli = (struct sockaddr *)cli_un;
+
+	return s;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -103,9 +152,11 @@ main(int argc, char *argv[])
 	struct sockaddr_in	addr_cli_in;
 	struct sockaddr_in	addr_srv_in;
 
-	char path_local[UNIX_PATH_MAX];
+	/*char path_local[UNIX_PATH_MAX];*/
 	char const	*unix_dgram_local = UNIX_LOCAL;
 	char const	*unix_dgram_remote;
+	char const	*unix_stream_local = UNIX_LOCAL;
+	char const	*unix_stream_remote;
 	struct sockaddr_un	addr_cli_un;
 	struct sockaddr_un	addr_srv_un;
 
@@ -118,15 +169,13 @@ main(int argc, char *argv[])
 	socklen_t	addr_srv_len;
 
 	int s;
-	unsigned char	buf[BUFLEN];
 	ssize_t	i;
-	struct someip *	o	= (struct someip *)buf;
 	unsigned	arg_mask = 0;
 	unsigned short	client	= 0;
 	unsigned short	service	= 0;
 	unsigned short	method	= 0;
 	unsigned short	session	= 0;
-	unsigned	to	= 0;
+	unsigned	to	= 1;
 
 	{
 		unsigned i;
@@ -137,6 +186,7 @@ main(int argc, char *argv[])
 				&service, &method, &client, &session))
 			if(someip_args_print(argc, argv, &i, &arg_mask))
 			if(someip_args_unix_dgram(argc, argv, &i, usage_exit, &arg_mask, &unix_dgram_remote))
+			if(someip_args_unix_stream(argc, argv, &i, usage_exit, &arg_mask, &unix_stream_remote))
 			{
 				if(!strcmp(argv[i], "--udp"))
 				{
@@ -171,6 +221,13 @@ main(int argc, char *argv[])
 						usage_exit(argv[0]);
 
 					unix_dgram_local = argv[++i];
+				}
+				else if(!strcmp(argv[i], "--unix-stream-local"))
+				{
+					if(i + 1 >= argc)
+						usage_exit(argv[0]);
+
+					unix_stream_local = argv[++i];
 				}
 				else
 					usage_exit(argv[0]);
@@ -210,37 +267,25 @@ main(int argc, char *argv[])
 			break;
 
 		case arg_UNIX_DGRAM:
-			s = net_unix_dgram_socket();
-			if(s < 0)
-			{
-				fputs("socket(UNIX)\n", stderr);
-				return 3;
-			}
+			s = cli_open(
+						&addr_srv, &addr_srv_len,
+						&addr_cli, &addr_cli_len,
+						&addr_srv_un,
+						&addr_cli_un,
+						SOCK_DGRAM,
+						unix_dgram_remote,
+						unix_dgram_local);
+			break;
 
-			sprintf(path_local, "%s.%u", unix_dgram_local, (unsigned)getpid());
-			if(net_unix_addr(&addr_cli_un, path_local) < 0)
-			{
-				fputs("addr-cli(UNIX): ", stderr);
-				fputs(path_local, stderr);
-				fputc('\n', stderr);
-				return 3;
-			}
-
-			addr_cli = (struct sockaddr *)&addr_cli_un;
-			addr_cli_len =
-				sizeof(addr_cli_un.sun_family) + strlen(addr_cli_un.sun_path);
-
-			if(net_unix_addr(&addr_srv_un, unix_dgram_remote) < 0)
-			{
-				fputs("addr-srv(UNIX): ", stderr);
-				fputs(unix_dgram_remote, stderr);
-				fputc('\n', stderr);
-				return 3;
-			}
-
-			addr_srv = (struct sockaddr *)&addr_srv_un;
-			addr_srv_len = sizeof(addr_srv_un);
-
+		case arg_UNIX_STREAM:
+			s = cli_open(
+						&addr_srv, &addr_srv_len,
+						&addr_cli, &addr_cli_len,
+						&addr_srv_un,
+						&addr_cli_un,
+						SOCK_STREAM,
+						unix_stream_remote,
+						unix_stream_local);
 			break;
 	}
 
@@ -250,19 +295,31 @@ main(int argc, char *argv[])
 		return 4;
 	}
 
+	if(is_STREAM(arg_mask))
+	{
+		if(connect(s, addr_srv, addr_srv_len) < 0)
+		{
+			perror("connect");
+			return 5;
+		}
+	}
+
 	for(;;)
 	{
-		char buf[STDIN_BUFLEN];
+		unsigned char	buf[BUFLEN];
+		struct someip *	o	= (struct someip *)buf;
 
 		if(arg_mask & arg_STDIN)
 		{
+			char get_buf[STDIN_BUFLEN];
+
 			if(isatty(fileno(stdin)) > 0)
 			{
 				fputs("cmd> ", stdout);
 				fflush(stdout);
 			}
 
-			if(fgets(buf, sizeof(buf), stdin) == NULL)
+			if(fgets(get_buf, sizeof(get_buf), stdin) == NULL)
 				break;
 
 			{
@@ -270,7 +327,7 @@ main(int argc, char *argv[])
 				double arg[2];
 				int i;
 
-				i = sscanf(buf, "%s %lf%lf", cmd, arg, arg + 1);
+				i = sscanf(get_buf, "%s %lf%lf", cmd, arg, arg + 1);
 				if(i > 0)
 				{
 					struct cmd * c;
@@ -314,18 +371,32 @@ main(int argc, char *argv[])
 
 		someip_print_msg(o, arg_mask);
 
-		i = someip_send(s, o, addr_srv, addr_srv_len);
-		if(i < 0)
+		if(is_STREAM(arg_mask))
 		{
-			perror("someip_send()");
-			return 4;
+			if(someip_sendn(s, o, STREAM_TIMEOUT) < 0)
+			{
+				fputs("Connection lost.\n", stderr);
+				break;
+			}
+
+			i = someip_recvn(s, o, to);
+		}
+		else
+		{
+			i = someip_send(s, o, addr_srv, addr_srv_len);
+			if(i < 0)
+			{
+				perror("Cannot send.");
+				break;
+			}
+
+			i = someip_recv(s, (struct someip *)buf, sizeof(buf), NULL, NULL, to);
 		}
 
-		i = someip_recv(s, (struct someip *)buf, sizeof(buf), NULL, NULL, to);
 		if(i < 0)
 		{
-			fputs("someip_recv()\n", stderr);
-			return 5;
+			fputs("Cannot recv.\n", stderr);
+			break;
 		}
 
 		someip_print_recv(i, arg_mask);
@@ -361,13 +432,14 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if((arg_mask & arg_NET) == arg_UNIX_DGRAM)
-		if(unlink(path_local) < 0
-		&& errno != ENOENT)
-		{
-			perror(path_local);
-			return 5;
-		}
+	if(is_UNIX(arg_mask))
+		unix_unlink(
+			is_DGRAM(arg_mask)
+			? unix_dgram_local
+			: unix_stream_local);
+
+	if(is_STREAM(arg_mask))
+		close(s);
 
 	return 0;
 }

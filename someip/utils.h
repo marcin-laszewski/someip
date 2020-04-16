@@ -20,10 +20,18 @@
 #define	arg_TIMEOUT	(1 << 12)
 #define	arg_STDIN	(1 << 13)
 #define	arg_UNIX_DGRAM	(1	<< 14)
+#define	arg_UNIX_STREAM	(1 << 15)
 
 #define	arg_PRINT	(arg_PRINT_DATA | arg_PRINT_HDR | arg_PRINT_RECV)
 
-#define	arg_NET	(arg_UDP | arg_UNIX_DGRAM)
+#define	arg_DGRAM	(arg_UDP | arg_UNIX_DGRAM)
+#define	arg_STREAM	(arg_UNIX_STREAM)
+#define	arg_NET	(arg_DGRAM | arg_STREAM)
+#define	arg_UNIX	(arg_UNIX_DGRAM | arg_UNIX_STREAM)
+
+#define	is_DGRAM(m)		((m) & arg_DGRAM)
+#define	is_STREAM(m)	((m) & arg_STREAM)
+#define	is_UNIX(m)		((m) & arg_UNIX)
 
 #if defined(__cplusplus)
 extern "C" {
@@ -41,6 +49,8 @@ int someip_args_udp(int argc, char * const * argv, unsigned * i,
 int	someip_args_unix_dgram(int argc, char * const * argv, unsigned * i,
         void (* usage_exit)(char const *), unsigned * mask,
         char const **remote);
+int	someip_args_unix_stream(int argc, char * const * argv, unsigned * i,
+        void (* usage_exit)(char const *), unsigned * mask, char const **path);
 
 void	someip_print_data(struct someip * data);
 void	someip_print_hdr(struct someip * data);

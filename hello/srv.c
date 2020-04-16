@@ -10,6 +10,11 @@
 #include <someip/utils.h>
 
 #include "config.h"
+#include "utils.h"
+
+#if !defined(STREAM_TIMEOUT)
+#	define	STREAM_TIMEOUT	60
+#endif
 
 #define	BUFLEN	4096
 
@@ -25,7 +30,7 @@ usage_exit(char const * progname)
 	fputs(" \\\n"
 		"\t[--client] [--method] [--service] [--session] [--protocol] \\\n"
 		"\t[--print-data] [--print-hdr] [--print-recv] \\\n"
-		"\t{--udp port | --unix-dgram path}"
+		"\t{--udp port | --unix-dgram path | --unix-stream path }"
 		"\n", stderr);
 	exit(1);
 }
@@ -44,6 +49,40 @@ void set_result(struct someip * o, double result)
 	someip_set_code(o, someip_code_OK);
 	someip_set_type(o, someip_type_RESPONSE);
 	someip_set_data(o, &result, sizeof result);
+	someip_set_len(o, sizeof(result));
+}
+
+static int
+srv_unix(
+	struct sockaddr ** srv, socklen_t * srv_len,
+	struct sockaddr ** cli, socklen_t * cli_len,
+	struct sockaddr_un * srv_un,
+	struct sockaddr_un * cli_un,
+	int type, char const * path)
+{
+	if(unix_unlink(path))
+			return -1;
+
+	{
+		int s;
+
+		s = unix_open(srv, srv_len, type, srv_un, path);
+		if(s < 0)
+			return 3;
+
+		*cli = (struct sockaddr *)cli_un;
+		*cli_len = sizeof(*cli_un);
+
+		return s;
+	}
+}
+
+static void
+stream_close(int * f)
+{
+	if(close(*f) < 0)
+		perror("close(stream)");
+	*f = -1;
 }
 
 int
@@ -54,6 +93,7 @@ main(int argc, char *argv[])
 	struct sockaddr_in addr_cli_in;
 
 	char const *	unix_dgram;
+	char const *	unix_stream;
 	struct sockaddr_un addr_srv_un;
 	struct sockaddr_un addr_cli_un;
 
@@ -64,6 +104,7 @@ main(int argc, char *argv[])
 	socklen_t	addr_cli_len;
 
 	int s;
+	int f = -1;
 	unsigned char	buf[BUFLEN];
 	ssize_t	i;
 	struct someip *	o	= (struct someip *)buf;
@@ -87,6 +128,7 @@ main(int argc, char *argv[])
 				&service, &method, &client, &session))
 			if(someip_args_print(argc, argv, &i, &arg_mask))
 			if(someip_args_unix_dgram(argc, argv, &i, usage_exit, &arg_mask, &unix_dgram))
+			if(someip_args_unix_stream(argc, argv, &i, usage_exit, &arg_mask, &unix_stream))
 			{
 				if(!strcmp(argv[i], "--protocol"))
 				{
@@ -110,7 +152,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	switch(arg_mask & arg_MANDATORY)
+	switch(arg_mask & arg_NET)
 	{
 		case arg_UDP:
 			s = net_udp_socket();
@@ -132,39 +174,23 @@ main(int argc, char *argv[])
 			break;
 
 		case arg_UNIX_DGRAM:
-			s = net_unix_dgram_socket();
-			if(s < 0)
-			{
-				fputs("socket(UNIX)\n", stderr);
-				return 3;
-			}
+			s = srv_unix(
+						&addr_srv, &addr_srv_len,
+						&addr_cli, &addr_cli_len,
+						&addr_srv_un,
+						&addr_cli_un,
+						SOCK_DGRAM,
+						unix_dgram);
+			break;
 
-			if(unlink(unix_dgram) < 0
-			&& errno != ENOENT)
-			{
-				perror(unix_dgram);
-				return 5;
-			}
-
-			{
-				int i;
-
-				i = net_unix_addr(&addr_srv_un, unix_dgram);
-				if(i < 0)
-				{
-					fputs("Incorrect path: ", stderr);
-					fputs(unix_dgram, stderr);
-					fputc('\n', stderr);
-					return 2;
-				}
-
-				addr_srv = (struct sockaddr *)&addr_srv_un;
-				addr_srv_len = sizeof(addr_srv_un);
-
-				addr_cli = (struct sockaddr *)&addr_cli_un;
-				addr_cli_len = sizeof(addr_cli_un);
-			}
-
+		case arg_UNIX_STREAM:
+			s = srv_unix(
+						&addr_srv, &addr_srv_len,
+						&addr_cli, &addr_cli_len,
+						&addr_srv_un,
+						&addr_cli_un,
+						SOCK_STREAM,
+						unix_stream);
 			break;
 
 		default:
@@ -177,19 +203,51 @@ main(int argc, char *argv[])
 		return 4;
 	}
 
+	if(is_STREAM(arg_mask))
+		if(listen(s, 5) < 0)
+		{
+			perror("listen-stream");
+			return 3;
+		}
+
 	while(1)
 	{
-		i = someip_recv(s, (struct someip *)buf, sizeof(buf),
-					addr_cli, &addr_cli_len, 0);
-		if(i < 0)
+		if(is_STREAM(arg_mask))
 		{
-			fputs("someip_recv()\n", stderr);
-			return 5;
+			if(f < 0)
+			{
+				socklen_t len = addr_cli_len;
+
+				f = accept(s, addr_cli, &len);
+				if(f < 0)
+				{
+					perror("accept");
+					return 4;
+				}
+			}
+
+			i = someip_recvn(f, o, STREAM_TIMEOUT);
+		}
+		else
+			i = someip_recv(s, (struct someip *)buf, sizeof(buf),
+						addr_cli, &addr_cli_len, 0);
+
+		if(i < someip_len_HDR)
+		{
+			if(i)
+				fprintf(stderr, "someip_recv() = %ld\n", i);
+
+			if(is_STREAM(arg_mask))
+				stream_close(&f);
+
+			continue;
 		}
 
 		someip_print_recv(i, arg_mask);
 
-		if(i > someip_len_HDR1 + someip_len_HDR2)
+		i -= someip_len_HDR;
+
+		if(i > sizeof(double))
 		{
 			someip_print_msg((struct someip *)buf, arg_mask);
 
@@ -234,19 +292,31 @@ main(int argc, char *argv[])
 
 			someip_print_msg(o, arg_mask);
 
-			if(file_select_write(s, 1) <= 0)
+			if(is_STREAM(arg_mask))
 			{
-				fputs("timeout(SEND)\n", stderr);
-				return 6;
+				if(someip_sendn(f, o, STREAM_TIMEOUT))
+				{
+					fputs("send(stream) error.\n", stderr);
+					stream_close(&f);
+					continue;
+				}
 			}
-
-			someip_print_msg(o, arg_mask);
-
-			i = someip_send(s, o, addr_cli, addr_cli_len);
-			if(i < 0)
+			else
 			{
-				perror("someip_send()");
-				return 4;
+				if(file_select_write(s, STREAM_TIMEOUT) <= 0)
+				{
+					fputs("timeout(SEND)\n", stderr);
+					return 6;
+				}
+
+				someip_print_msg(o, arg_mask);
+
+				i = someip_send(s, o, addr_cli, addr_cli_len);
+				if(i < 0)
+				{
+					perror("someip_send()");
+					return 4;
+				}
 			}
 		}
 	}

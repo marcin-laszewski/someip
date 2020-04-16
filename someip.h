@@ -5,6 +5,7 @@
 
 #define	someip_len_HDR1	8
 #define	someip_len_HDR2	8
+#define	someip_len_HDR	(someip_len_HDR1 + someip_len_HDR2)
 
 #define	someip_PROTO	0x1
 #define	someip_IFACE	0x0
