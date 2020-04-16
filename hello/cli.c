@@ -152,11 +152,8 @@ main(int argc, char *argv[])
 	struct sockaddr_in	addr_cli_in;
 	struct sockaddr_in	addr_srv_in;
 
-	/*char path_local[UNIX_PATH_MAX];*/
-	char const	*unix_dgram_local = UNIX_LOCAL;
-	char const	*unix_dgram_remote;
-	char const	*unix_stream_local = UNIX_LOCAL;
-	char const	*unix_stream_remote;
+	char const	*unix_local = UNIX_LOCAL;
+	char const	*unix_remote;
 	struct sockaddr_un	addr_cli_un;
 	struct sockaddr_un	addr_srv_un;
 
@@ -185,8 +182,8 @@ main(int argc, char *argv[])
 			if(someip_args_someip(argc, argv, &i, &arg_mask, usage_exit,
 				&service, &method, &client, &session))
 			if(someip_args_print(argc, argv, &i, &arg_mask))
-			if(someip_args_unix_dgram(argc, argv, &i, usage_exit, &arg_mask, &unix_dgram_remote))
-			if(someip_args_unix_stream(argc, argv, &i, usage_exit, &arg_mask, &unix_stream_remote))
+			if(someip_args_unix_dgram(argc, argv, &i, usage_exit, &arg_mask, &unix_remote))
+			if(someip_args_unix_stream(argc, argv, &i, usage_exit, &arg_mask, &unix_remote))
 			{
 				if(!strcmp(argv[i], "--udp"))
 				{
@@ -220,14 +217,14 @@ main(int argc, char *argv[])
 					if(i + 1 >= argc)
 						usage_exit(argv[0]);
 
-					unix_dgram_local = argv[++i];
+					unix_local = argv[++i];
 				}
 				else if(!strcmp(argv[i], "--unix-stream-local"))
 				{
 					if(i + 1 >= argc)
 						usage_exit(argv[0]);
 
-					unix_stream_local = argv[++i];
+					unix_local = argv[++i];
 				}
 				else
 					usage_exit(argv[0]);
@@ -273,8 +270,8 @@ main(int argc, char *argv[])
 						&addr_srv_un,
 						&addr_cli_un,
 						SOCK_DGRAM,
-						unix_dgram_remote,
-						unix_dgram_local);
+						unix_remote,
+						unix_local);
 			break;
 
 		case arg_UNIX_STREAM:
@@ -284,8 +281,8 @@ main(int argc, char *argv[])
 						&addr_srv_un,
 						&addr_cli_un,
 						SOCK_STREAM,
-						unix_stream_remote,
-						unix_stream_local);
+						unix_remote,
+						unix_local);
 			break;
 	}
 
@@ -433,10 +430,7 @@ main(int argc, char *argv[])
 	}
 
 	if(is_UNIX(arg_mask))
-		unix_unlink(
-			is_DGRAM(arg_mask)
-			? unix_dgram_local
-			: unix_stream_local);
+		unix_unlink(unix_local);
 
 	if(is_STREAM(arg_mask))
 		close(s);

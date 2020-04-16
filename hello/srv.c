@@ -92,8 +92,7 @@ main(int argc, char *argv[])
 	struct sockaddr_in addr_srv_in;
 	struct sockaddr_in addr_cli_in;
 
-	char const *	unix_dgram;
-	char const *	unix_stream;
+	char const *	unix_path;
 	struct sockaddr_un addr_srv_un;
 	struct sockaddr_un addr_cli_un;
 
@@ -127,8 +126,8 @@ main(int argc, char *argv[])
 			if(someip_args_someip(argc, argv, &i, &arg_mask, usage_exit,
 				&service, &method, &client, &session))
 			if(someip_args_print(argc, argv, &i, &arg_mask))
-			if(someip_args_unix_dgram(argc, argv, &i, usage_exit, &arg_mask, &unix_dgram))
-			if(someip_args_unix_stream(argc, argv, &i, usage_exit, &arg_mask, &unix_stream))
+			if(someip_args_unix_dgram(argc, argv, &i, usage_exit, &arg_mask, &unix_path))
+			if(someip_args_unix_stream(argc, argv, &i, usage_exit, &arg_mask, &unix_path))
 			{
 				if(!strcmp(argv[i], "--protocol"))
 				{
@@ -180,7 +179,7 @@ main(int argc, char *argv[])
 						&addr_srv_un,
 						&addr_cli_un,
 						SOCK_DGRAM,
-						unix_dgram);
+						unix_path);
 			break;
 
 		case arg_UNIX_STREAM:
@@ -190,7 +189,7 @@ main(int argc, char *argv[])
 						&addr_srv_un,
 						&addr_cli_un,
 						SOCK_STREAM,
-						unix_stream);
+						unix_path);
 			break;
 
 		default:
