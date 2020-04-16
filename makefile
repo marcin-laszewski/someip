@@ -12,11 +12,11 @@ ARGS_OBJS = \
 	args/unix/dgram.o \
 	args/unix/stream.o \
 
-CL	= hello-cli
-CL_OUT	= hello/$(CL)
+CL	= cli
+CL_OUT	= $(CL)
 CL_OBJS	= \
 	$(ARGS_OBJS) \
-	hello/cli.o \
+	cli.o \
 	$(ML)/file/select/read.o \
 	$(ML)/file/select/write.o \
 	$(ML)/net/inet/addr.o \
@@ -42,11 +42,11 @@ CL_OBJS	= \
 
 OUTS +=	$(CL_OUT)
 
-SR	= hello-srv
-SR_OUT	= hello/$(SR)
+SR	= srv
+SR_OUT	= $(SR)
 SR_OBJS	= \
 	$(ARGS_OBJS) \
-	hello/srv.o \
+	srv.o \
 	$(ML)/file/select/read.o \
 	$(ML)/file/select/write.o \
 	$(ML)/net/inet/addr/any.o \
@@ -113,7 +113,7 @@ $(OUTS):
 
 %.o: %.c
 	@echo '[CC]	' $@
-	@$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 #--- client ------------------
 debug-$(CL_OUT): $(CL_OUT)
@@ -136,7 +136,7 @@ run-cli-unix-stream: $(CL_OUT)
 		--timeout 15 \
 		--unix-stream /tmp/hello-srv \
 		--stdin \
-		#< hello/hello-cli.cmd
+		#< hello-cli.cmd
 #	--unix-dgram /tmp/hello-srv \
 #	--unix-dgram /tmp/vsomeip-0 \
 #	--udp 127.0.0.1 30509 \

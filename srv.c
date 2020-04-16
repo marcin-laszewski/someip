@@ -9,8 +9,9 @@
 #include <someip/net.h>
 #include <someip/utils.h>
 
-#include "config.h"
 #include "utils.h"
+
+#include "app/config.h"
 
 #if !defined(STREAM_TIMEOUT)
 #	define	STREAM_TIMEOUT	60
