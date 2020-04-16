@@ -186,7 +186,16 @@ main(int argc, char *argv[])
 			if(someip_args_unix_dgram(argc, argv, &i, usage_exit, &arg_mask, &unix_remote))
 			if(someip_args_unix_stream(argc, argv, &i, usage_exit, &arg_mask, &unix_remote))
 			{
-				if(!strcmp(argv[i], "--udp"))
+				if(!strcmp(argv[i], "--tcp"))
+				{
+					if(i + 2 >= argc)
+						usage_exit(argv[0]);
+
+					host = argv[++i];
+					port = argv[++i];
+					arg_mask |= (arg_NET | arg_net_domain_IP | arg_net_type_STREAM);
+				}
+				else if(!strcmp(argv[i], "--udp"))
 				{
 					if(i + 2 >= argc)
 						usage_exit(argv[0]);
@@ -238,36 +247,40 @@ main(int argc, char *argv[])
 
 	if(is_IP(arg_mask))
 	{
+		if(net_inet_addr(&addr_srv_in, host, atoi(port)) == NULL)
+		{
+			fputs("Incorrect adress/port: ", stderr);
+			fputs(argv[1], stderr);
+			fputc(':', stderr);
+			fputs(argv[2], stderr);
+			fputc('\n', stderr);
+			return 2;
+		}
+
 		if(is_DGRAM(arg_mask))
 		{
-			if(net_inet_addr(&addr_srv_in, host, atoi(port)) == NULL)
-			{
-				fputs("Incorrect adress/port: ", stderr);
-				fputs(argv[1], stderr);
-				fputc(':', stderr);
-				fputs(argv[2], stderr);
-				fputc('\n', stderr);
-				return 2;
-			}
-
 			s = net_udp_socket();
 			if(s < 0)
 			{
 				fputs("socket(UDP)\n", stderr);
 				return 3;
 			}
-
-			addr_srv = (struct sockaddr *)&addr_srv_in;
-			addr_srv_len = sizeof(addr_srv_in);
-
-			addr_cli = (struct sockaddr *)&addr_cli_in;
-			addr_cli_len = sizeof(addr_cli_in);
 		}
 		else
 		{
-			fputs("Not supported IP type.\n", stderr);
-			return 2;
+			s = socket(AF_INET, SOCK_STREAM, 0);
+			if(s < 0)
+			{
+				fputs("socket(TCP)\n", stderr);
+				return 3;
+			}
 		}
+
+		addr_srv = (struct sockaddr *)&addr_srv_in;
+		addr_srv_len = sizeof(addr_srv_in);
+
+		addr_cli = (struct sockaddr *)&addr_cli_in;
+		addr_cli_len = sizeof(addr_cli_in);
 	}
 	else
 		s = cli_open(

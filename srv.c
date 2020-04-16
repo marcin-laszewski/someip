@@ -138,6 +138,14 @@ main(int argc, char *argv[])
 
 					proto = strtold(argv[i], NULL);
 				}
+				else if(!strcmp(argv[i], "--tcp"))
+				{
+					if(i + 1 >= argc)
+						usage_exit(argv[0]);
+
+					port = argv[++i];
+					arg_mask |= (arg_NET | arg_net_domain_IP | arg_net_type_STREAM);
+				}
 				else if(!strcmp(argv[i], "--udp"))
 				{
 					if(i + 2 >= argc)
@@ -162,20 +170,32 @@ main(int argc, char *argv[])
 				fputs("socket(UDP)\n", stderr);
 				return 3;
 			}
-
-
-			addr_cli = (struct sockaddr *)&addr_cli_in;
-			addr_cli_len = sizeof(addr_cli_in);
-
-			net_inet_addr_any(&addr_srv_in, atoi(port));
-
-			addr_srv = (struct sockaddr *)&addr_srv_in;
-			addr_srv_len = sizeof(addr_srv_in);
 		}
 		else
 		{
-			fputs("Not supported IP type.\n", stderr);
-			return 2;
+			s = socket(AF_INET, SOCK_STREAM, 0);
+			if(s < 0)
+			{
+				fputs("socket(TCP)\n", stderr);
+				return 3;
+			}
+
+			/*
+			{
+				unsigned char reuse_addr = 1;
+				unsigned char linger_opt = 0;
+
+				setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
+				setsockopt(s, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(SO_LINGER));
+			}
+			*/
+
+			net_inet_addr_any(&addr_srv_in, atoi(port));
+			addr_srv = (struct sockaddr *)&addr_srv_in;
+			addr_srv_len = sizeof(addr_srv_in);
+
+			addr_cli = (struct sockaddr *)&addr_cli_in;
+			addr_cli_len = sizeof(addr_cli_in);
 		}
 	}
 	else
