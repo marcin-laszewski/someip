@@ -1,6 +1,48 @@
 someip
 ======
 Marcin Laszewski Marcin.Laszewski@aptiv.com
+:toc:
+
+Funkcjonalności
+---------------
+*	Wymiana komunikatów _someip_ z wykorzystaniem transmisji pakietowej
+	i strumieniowej w sieciach IP i Unix (we wszystkich kombinacjach):
+|===========================================
+|	| DGRAM			| STREAM
+| Unix	| Pakiety		| Strumienie
+| IP	| UDP/IP		| TCP/IP
+|===========================================
+*	Współpracuje z VSOMEIP.
+*	Przykładowe aplikacje - kalkulator.
+*	Środowisko przetestowane: _Linux_, _GCC_, _libc_.
+	..	W trakcie testowania: Windows, MinGW, Cygwin.
+*	Konfiguracja ad-hoc w postaci parametrów uruchomianego programu.
+*	Połączenia strumieniowe:
+	..	Jedna sesja pozwala na przesłanie dowolnej liczby
+		komunikatów transakcyjnych.
+	..	Tylko jedna aktyna sesja (na tą chwilę).
+	..	Możliwość fizycznego odłączenia stacji gdy nie jest
+		nic przesyłane.
+*	Wspólny kod zestawiający połączenie w domenie UNIX oraz IP.
+*	Wspólny kod dla połączeń datagramowych i strumieniowych.
+*	Serwer - asynchroniczny w połączeniach datagramowych.
+*	Łatwe do wstawienia w kod z generatorów.
+
+TODO
+----
+*	Windows (MinGW, Cygwin) - w trakcie.
+*	Jak wygląda (powinna wyglądać) sesja w połączeniu strumieniowym:
+	każda transakcja w oddzielnym połączeniu?
+*	Oddzielić część aplikacyjną (np. obliczenia kalkulatora po stronie
+	serwera oraz interface użytkownika) od transportu (SOMEIP + transport).
+*	Jak ma wyglądać współbieżność serwera dla połączeń strumieniowych -
+	wątki, procesy czy wszystko w zakresie jednej sesji?
+*	Testy wydajności:
+	..	Strumienie vs. datagramy.
+	..	Unix vs. sieć IP.
+	..	someip vs. VSOMEIP.
+*	Serializacja na podstawie specyfikacji dla generatorów (deployment
+	files).
 
 Kompilacja
 ----------
