@@ -68,9 +68,51 @@ $ make all
 [LD]     hello/hello-srv
 .....................................
 
+Parametry
+---------
 
-Uruchomienie
-------------
+Serwer
+~~~~~~
+
+--client id::	SOMEIP klient id
+--method id::	SOMEIP method id
+--service id::	SOMEIP service id
+--session id::	SOMEIP session id
+--protocol id:	SOMEIP protocol id
+--print-data::	Pokaż zawartość _payload_ w postaci _ASCII_ lub
+		_HEX_ dla znaków niedrukowalnych.
+--print-hdr::	Pokaż zawartość nagłówka SOMEIP.
+--print-recv::	Pokaż status operacji wejścia/wyjścia.
+--udp port::	Port dla transmsji UDP.
+--unix-dgram path::	Ścieżka plikowa dla pakietowej transmisji
+			_unix_.
+--unix-stream path::	Ścieżka plikowa dla strumieniowej
+			ransmisji _unix_.
+
+Klient
+~~~~~~
+
+--loop ms::	Ciągłe powatarzanie zapytań (do testów, np. wydajności).
+--timeout sec::	Limit czasowy na realizację ransakcji w sekundach.
+--print-data::	Pokaż zawartość _payload_ w postaci _ASCII_ lub
+		_HEX_ dla znaków niedrukowalnych.
+--print-hdr::	Pokaż zawartość nagłówka SOMEIP.
+--print-recv::	Pokaż status operacji wejścia/wyjścia.
+--stdin::	Wczytwanie poleceń ze standrdowego wejścia.
+--udp inet-addr port::
+		Adress (ip lub nazwa) oraz port dla transmsji UDP.
+--unix-dgram path::
+		Ścieżka plikowa serwera dla pakietowje transmisji _unix_.
+--unix-dgram-local path::
+		Ścieżka plikowa klienta dla pakietowej transmisji _unix_.
+--client id::	SOMEIP klient id
+--method id::	SOMEIP method id
+--service id::	SOMEIP service id
+--session id::	SOMEIP session id
+
+
+Przykłady
+---------
 
 Serwer
 ~~~~~~
