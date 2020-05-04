@@ -124,11 +124,11 @@ stream_close(int * f)
 int
 main(int argc, char *argv[])
 {
-	char const *	port;
+	char const *	port = NULL;
 	struct sockaddr_in addr_srv_in;
 	struct sockaddr_in addr_cli_in;
 
-	char const *	unix_path;
+	char const *	unix_path = NULL;
 	struct sockaddr_un addr_srv_un;
 	struct sockaddr_un addr_cli_un;
 
@@ -194,6 +194,9 @@ main(int argc, char *argv[])
 			}
 		}
 	}
+
+	if(!(port || unix_path))
+		usage_exit(argv[0]);
 
 	if(is_IP(arg_mask))
 		s = srv_ip(

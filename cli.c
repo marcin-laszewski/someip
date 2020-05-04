@@ -154,7 +154,7 @@ main(int argc, char *argv[])
 	struct sockaddr_in	addr_srv_in;
 
 	char const	*unix_local = UNIX_LOCAL;
-	char const	*unix_remote;
+	char const	*unix_remote = NULL;
 	struct sockaddr_un	addr_cli_un;
 	struct sockaddr_un	addr_srv_un;
 
